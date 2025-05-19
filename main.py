@@ -63,3 +63,7 @@ def download_file(filename: str):
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
     return FileResponse(filepath, media_type="application/octet-stream", filename=filename)
+
+@app.get("/")
+def root():
+    return {"mensagem": "Servidor está no ar!"}

@@ -2,5 +2,4 @@ fastapi
 uvicorn
 pydantic
 yt-dlp
-hurry.filesize
 gunicorn
