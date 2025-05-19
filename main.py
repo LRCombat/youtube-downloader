@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Form
 from pydantic import BaseModel
+from fastapi.responses import FileResponse
 import subprocess
 import os
 import uuid
@@ -32,25 +32,20 @@ def download_video(url: str, format: str):
             url
         ]
 
-    try:
-        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao baixar o vídeo: {e.stderr.decode()}")
-
+    subprocess.run(command, check=True)
     final_path = os.path.join(FILES_DIR, f"{file_id}.{format}")
     if not os.path.exists(final_path):
-        raise HTTPException(status_code=500, detail="Erro ao gerar o arquivo final.")
-
+        raise HTTPException(status_code=500, detail="Erro ao gerar o arquivo.")
     return final_path, f"{file_id}.{format}"
 
 @app.post("/baixar_mp3")
-def baixar_mp3(req: RequestModel):
-    path, filename = download_video(req.url, "mp3")
+def baixar_mp3(url: str = Form(...)):
+    path, filename = download_video(url, "mp3")
     return {"download_url": f"/download/{filename}"}
 
 @app.post("/baixar_mp4")
-def baixar_mp4(req: RequestModel):
-    path, filename = download_video(req.url, "mp4")
+def baixar_mp4(url: str = Form(...)):
+    path, filename = download_video(url, "mp4")
     return {"download_url": f"/download/{filename}"}
 
 @app.get("/download/{filename}")
@@ -58,12 +53,4 @@ def download_file(filename: str):
     filepath = os.path.join(FILES_DIR, filename)
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
-
-    ext = filename.split('.')[-1].lower()
-    media_type = "application/octet-stream"
-    if ext == "mp3":
-        media_type = "audio/mpeg"
-    elif ext == "mp4":
-        media_type = "video/mp4"
-
-    return FileResponse(filepath, media_type=media_type, filename=filename)
+    return FileResponse(filepath, media_type="application/octet-stream", filename=filename)
