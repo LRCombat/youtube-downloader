@@ -1,12 +1,20 @@
 {
-  "name": "Youtube downloader",
-  "description": "This is a youtube downloader. Made of flask and yt-dlp.",
-  "author": "Abhijith N T",
-  "repository": "https://github.com/abhint/youtube-downloader",
-  "keywords": ["youtube-downloader", "python", "flask", "yt-dlp"],
+  "name": "Youtube Downloader",
+  "description": "API para baixar vídeos do YouTube como MP3 ou MP4 usando FastAPI e yt-dlp.",
+  "repository": "https://github.com/SEU_USUARIO/SEU_REPOSITORIO",
+  "keywords": ["fastapi", "yt-dlp", "python", "youtube-downloader"],
   "buildpacks": [
     {
-  "url": "https://link-do-video"
-}
-  ]
+      "url": "heroku/python"
+    }
+  ],
+  "env": {
+    "PORT": {
+      "description": "Porta usada pelo servidor FastAPI",
+      "value": "8000"
+    }
+  },
+  "scripts": {
+    "postdeploy": "echo 'Aplicação implantada com sucesso!'"
+  }
 }
