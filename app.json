@@ -6,7 +6,7 @@
   "keywords": ["youtube-downloader", "python", "flask", "yt-dlp"],
   "buildpacks": [
     {
-      "url": "heroku/python"
-    }
+  "url": "https://link-do-video"
+}
   ]
 }
