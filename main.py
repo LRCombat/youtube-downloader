@@ -1,27 +1,65 @@
-import re
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from fastapi.responses import FileResponse
+import subprocess
 import os
-from flask import Flask, render_template, request
-from utils import REGEX, get_youtube_extract
-app = Flask(__name__)
+import uuid
 
+app = FastAPI()
 
-@app.route('/', methods=['GET', 'POST'])
-def _index():
-    if 'POST' in request.method:
-        youtube_url = request.form.get('youtube_url')
-        if re.match(REGEX, youtube_url):
-            user_dict = get_youtube_extract(youtube_url)
-            audio = user_dict['audio_formats']
-            return render_template('result.html',
-                                   audio_dict=audio,
-                                   thumbnail=user_dict['thumbnail'],
-                                   video_dict=user_dict['video_formats'],
-                                   video_title=user_dict['title'],
-                                   )
+FILES_DIR = "files"
+os.makedirs(FILES_DIR, exist_ok=True)
 
-    return render_template('home.html')
+class RequestModel(BaseModel):
+    url: str
+    format: str  # "mp3" ou "mp4"
 
+@app.post("/convert")
+def convert_video(req: RequestModel):
+    url = req.url
+    format = req.format.lower()
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=os.environ.get(
-        "PORT", 5000), use_reloader=True, threaded=True)
+    if format not in ["mp3", "mp4"]:
+        raise HTTPException(status_code=400, detail="Formato inválido. Use 'mp3' ou 'mp4'.")
+
+    file_id = str(uuid.uuid4())
+    output_path = os.path.join(FILES_DIR, f"{file_id}.%(ext)s")
+
+    command = [
+        "yt-dlp",
+        "-f", "bestvideo+bestaudio/best",
+        url,
+        "-o", output_path,
+    ]
+
+    if format == "mp3":
+        command = [
+            "yt-dlp",
+            "--extract-audio",
+            "--audio-format", "mp3",
+            "-o", output_path,
+            url
+        ]
+
+    try:
+        subprocess.run(command, check=True)
+        final_filename = f"{file_id}.{format}"
+        final_path = os.path.join(FILES_DIR, final_filename)
+
+        if not os.path.exists(final_path):
+            raise HTTPException(status_code=500, detail="Erro ao gerar o arquivo.")
+
+        return {
+            "status": "sucesso",
+            "download_url": f"/download/{final_filename}"
+        }
+
+    except subprocess.CalledProcessError as e:
+        raise HTTPException(status_code=500, detail=f"Erro: {str(e)}")
+
+@app.get("/download/{filename}")
+def download_file(filename: str):
+    filepath = os.path.join(FILES_DIR, filename)
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
+    return FileResponse(filepath, media_type="application/octet-stream", filename=filename)
