@@ -1,36 +1,20 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 import subprocess
 import os
 import uuid
 
 app = FastAPI()
-
 FILES_DIR = "files"
 os.makedirs(FILES_DIR, exist_ok=True)
 
 class RequestModel(BaseModel):
     url: str
-    format: str  # "mp3" ou "mp4"
 
-@app.post("/convert")
-def convert_video(req: RequestModel):
-    url = req.url
-    format = req.format.lower()
-
-    if format not in ["mp3", "mp4"]:
-        raise HTTPException(status_code=400, detail="Formato inválido. Use 'mp3' ou 'mp4'.")
-
+def download_video(url: str, format: str):
     file_id = str(uuid.uuid4())
     output_path = os.path.join(FILES_DIR, f"{file_id}.%(ext)s")
-
-    command = [
-        "yt-dlp",
-        "-f", "bestvideo+bestaudio/best",
-        url,
-        "-o", output_path,
-    ]
 
     if format == "mp3":
         command = [
@@ -40,22 +24,29 @@ def convert_video(req: RequestModel):
             "-o", output_path,
             url
         ]
+    else:  # mp4
+        command = [
+            "yt-dlp",
+            "-f", "bestvideo+bestaudio/best",
+            "-o", output_path,
+            url
+        ]
 
-    try:
-        subprocess.run(command, check=True)
-        final_filename = f"{file_id}.{format}"
-        final_path = os.path.join(FILES_DIR, final_filename)
+    subprocess.run(command, check=True)
+    final_path = os.path.join(FILES_DIR, f"{file_id}.{format}")
+    if not os.path.exists(final_path):
+        raise HTTPException(status_code=500, detail="Erro ao gerar o arquivo.")
+    return final_path, f"{file_id}.{format}"
 
-        if not os.path.exists(final_path):
-            raise HTTPException(status_code=500, detail="Erro ao gerar o arquivo.")
+@app.post("/baixar_mp3")
+def baixar_mp3(req: RequestModel):
+    path, filename = download_video(req.url, "mp3")
+    return {"download_url": f"/download/{filename}"}
 
-        return {
-            "status": "sucesso",
-            "download_url": f"/download/{final_filename}"
-        }
-
-    except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=f"Erro: {str(e)}")
+@app.post("/baixar_mp4")
+def baixar_mp4(req: RequestModel):
+    path, filename = download_video(req.url, "mp4")
+    return {"download_url": f"/download/{filename}"}
 
 @app.get("/download/{filename}")
 def download_file(filename: str):
@@ -63,7 +54,3 @@ def download_file(filename: str):
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
     return FileResponse(filepath, media_type="application/octet-stream", filename=filename)
-
-@app.get("/")
-def root():
-    return {"mensagem": "Servidor está no ar!"}
