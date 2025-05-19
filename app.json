@@ -1,7 +1,7 @@
 {
   "name": "Youtube Downloader",
   "description": "API para baixar vídeos do YouTube como MP3 ou MP4 usando FastAPI e yt-dlp.",
-  "repository": "https://github.com/SEU_USUARIO/SEU_REPOSITORIO",
+  "repository": "https://github.com/LRCombat/youtube-downloader",
   "keywords": ["fastapi", "yt-dlp", "python", "youtube-downloader"],
   "buildpacks": [
     {
